@@ -1,0 +1,9 @@
+{
+  "name": "math-solver-web",
+  "version": "1.0.0",
+  "description": "AI Math Solver with Netlify Functions",
+  "main": "index.html",
+  "dependencies": {
+    "@google/genai": "^0.1.1"
+  }
+}
