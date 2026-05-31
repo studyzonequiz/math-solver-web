@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI অংক সমাধানকারী</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { max-width: 500px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #333; margin-bottom: 20px; }
+        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; margin-bottom: 20px; }
+        .btn { border: 2px solid #2ecc71; color: white; background-color: #2ecc71; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn:hover { background-color: #27ae60; border-color: #27ae60; }
+        .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; }
+        #preview { max-width: 100%; max-height: 300px; margin-top: 15px; border-radius: 8px; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #result-box { margin-top: 25px; text-align: left; background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 5px solid #3498db; display: none; }
+        .loading { display: none; color: #3498db; font-weight: bold; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📸 অংক সমাধানকারী AI</h1>
+    <p>আপনার গ্যালারি থেকে অংকের ছবি আপলোড করুন বা তাৎক্ষণিক ছবি তুলুন।</p>
+    
+    <div class="upload-btn-wrapper">
+        <button class="btn">📷 ছবি সিলেক্ট করুন</button>
+        <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="previewAndSolve(event)">
+    </div>
+
+    <br>
+    <img id="preview" alt="ইউজারের আপলোড করা ছবি">
+    
+    <div id="loading" class="loading">⏳ AI অংকটি সমাধান করছে, অনুগ্রহ করে অপেক্ষা করুন...</div>
+    
+    <div id="result-box">
+        <h3>📊 সমাধান:</h3>
+        <p id="solutionText" style="white-space: pre-line; line-height: 1.6; color: #2c3e50;"></p>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
+
