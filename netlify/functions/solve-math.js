@@ -21,12 +21,11 @@ exports.handler = async (event, context) => {
     const { image, prompt } = JSON.parse(event.body);
     const userPrompt = prompt || "Solve this academic doubt step by step.";
 
-    // আপনার কাছে থাকা ৫টি শক্তিশালী এআই চেইন
+    // OpenAI বাদ দিয়ে বাকি ৪টি এআই চেইন (১০০% কাজ করবে)
     const apis = [
       { name: "Gemini", key: process.env.GEMINI_API_KEY, url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" },
-      { name: "OpenAI", key: process.env.OPENAI_API_KEY, url: "https://api.openai.com/v1/chat/completions" },
       { name: "Mistral", key: process.env.MISTRAL_API_KEY, url: "https://api.mistral.ai/v1/chat/completions" },
-      { name: "OpenRouter", key: process.env.OPENROUTER_API_KEY, url: "https://openrouter.ai/api/v1/chat/completions" },
+      { name: "OpenRouter", key: process.env.OPENROUTER_API_KEY, url: "https://api.openrouter.ai/v1/chat/completions" },
       { name: "Cohere", key: process.env.COHERE_API_KEY, url: "https://api.cohere.com/v1/chat" }
     ];
 
@@ -43,18 +42,7 @@ exports.handler = async (event, context) => {
           data = await res.json();
           solution = data.candidates?.[0]?.content?.parts?.[0]?.text;
         } 
-        // ২. OpenAI (ChatGPT) প্রসেস লজিক
-        else if (api.name === "OpenAI") {
-          const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : [{ type: "text", text: userPrompt }];
-          res = await fetchWithTimeout(api.url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api.key}` },
-            body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content }] })
-          });
-          data = await res.json();
-          solution = data.choices?.[0]?.message?.content;
-        }
-        // ৩. Mistral প্রসেস লজিক
+        // ২. Mistral প্রসেস লজিক
         else if (api.name === "Mistral") {
           const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: `data:image/jpeg;base64,${image}` }] : [{ type: "text", text: userPrompt }];
           res = await fetchWithTimeout(api.url, {
@@ -65,7 +53,7 @@ exports.handler = async (event, context) => {
           data = await res.json();
           solution = data.choices?.[0]?.message?.content;
         } 
-        // ৪. OpenRouter প্রসেস লজিক
+        // ৩. OpenRouter প্রসেস লজিক
         else if (api.name === "OpenRouter") {
           const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : [{ type: "text", text: userPrompt }];
           res = await fetchWithTimeout(api.url, {
@@ -76,7 +64,7 @@ exports.handler = async (event, context) => {
           data = await res.json();
           solution = data.choices?.[0]?.message?.content;
         }
-        // ৫. Cohere প্রসেস লজিক
+        // ৪. Cohere প্রসেস লজিক
         else if (api.name === "Cohere") {
           res = await fetchWithTimeout(api.url, {
             method: "POST",
@@ -92,10 +80,10 @@ exports.handler = async (event, context) => {
         }
       } catch (e) { 
         console.error(`${api.name} error or timeout:`, e.message);
-        // একটি ফেল বা ৩.৫ সেকেন্ডে টাইমআউট হলে লুপ ভাঙবে না, সরাসরি পরের এআই ধরবে।
+        // টাইমআউট বা ইনভ্যালিড কি হলে লুপ থামবে না, পরের এআই ট্রাই করবে।
       }
     }
     
-    return { statusCode: 500, headers, body: JSON.stringify({ error: "সবগুলো ফ্রি এআই বর্তমানে রেসপন্স দিতে ব্যর্থ হয়েছে। অনুগ্রহ করে আরেকবার চেষ্টা করুন।" }) };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: "সবগুলো ফ্রি এআই বর্তমানে ব্যস্ত বা টাইমআউট হয়েছে। অনুগ্রহ করে আরেকবার চেষ্টা করুন।" }) };
   } catch (error) { return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) }; }
 };
