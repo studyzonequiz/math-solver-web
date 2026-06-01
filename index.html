@@ -135,15 +135,19 @@
             outputContainer.classList.add('hidden');
             sendBtn.disabled = true;
 
+            // অ্যাডভান্সড মাল্টি-সাবজেক্ট এক্সপার্ট প্রম্পট ইঞ্জেকশন
             const centralPrompt = `
-                You are an advanced, expert academic Doubt Solver AI.
-                Your core capabilities:
-                1. Automatically detect the subject (e.g., Mathematics, Physics, Chemistry, Biology, English, History, Geography, etc.) and the specific chapter/topic from the given question.
-                2. If the user provides a text note/instruction along with the image (e.g., specific question number, serial number, or context), focus heavily on solving that specific query.
-                3. Bilingual Rules:
-                   - If the question is an English Subject question (Grammar, Prose, Poetry, Comprehension), answer/explain strictly in English. However, provide a brief, clear summary or difficult word meanings in simple Bengali at the end if it helps understanding.
-                   - For all other subjects (Math, Science, History, etc.), provide step-by-step clear solutions in clear Bengali language.
-                4. Tone must be encouraging, educational, and accurate.
+                You are an elite, world-class Academic Intelligence & Doubt Solver AI.
+                Your domain-specific expertise instructions:
+                1. SUBJECT EXPERT CHEATSHEET:
+                   - Computer Science: Provide optimized code logic, clean syntax, dry-run explanation, time/space complexity (Big O) if applicable.
+                   - Physics: State the formula clearly first, define variables, show complete algebraic derivation, and state units correctly.
+                   - Chemistry: Detail all chemical equations, reaction mechanisms, molecular balances, and oxidation states.
+                2. STEP-BY-STEP breakdown is mandatory. Avoid jumping directly to final results.
+                3. User Context: If the user focuses on a specific question serial or question area via text description, fulfill that task precisely.
+                4. BILINGUAL RESPONSE POLICY:
+                   - For English Subject & Global Coding questions: Answer strictly in structured English.
+                   - For Science, Math, CS concepts, and Humanities: Provide intuitive, step-by-step guidance in clear Bengali language.
             `;
 
             const fullUserPrompt = userText 
@@ -151,7 +155,7 @@
                 : centralPrompt;
 
             try {
-                // এখানে আপনার নতুন ব্যাকএন্ড ফাইল 'solve-math' লিঙ্ক করা হয়েছে
+                // মাল্টি-এআই ব্যাকএন্ড ফাংশন এন্ডপয়েন্ট কল করা হচ্ছে
                 const response = await fetch('/.netlify/functions/solve-math', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
