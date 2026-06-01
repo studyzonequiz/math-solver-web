@@ -1,9 +1,38 @@
-const fetch = require('node-fetch');
+const https = require('https');
 
-// নির্দিষ্ট সময়ের মধ্যে রেসপন্স না এলে রিকোয়েস্ট ক্যানসেল বা অন্য এআই-তে যাওয়ার ট্র্যাকার
+// বিল্ট-ইন https মডিউল দিয়ে ফেচ করার ফাংশন (কোনো এক্সটার্নাল প্যাকেজ লাগবে না)
+const nativeFetch = (url, options) => {
+  return new Promise((resolve, reject) => {
+    const urlObj = new URL(url);
+    const reqOptions = {
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      hostname: urlObj.hostname,
+      path: urlObj.pathname + urlObj.search,
+      port: 443
+    };
+
+    const req = https.request(reqOptions, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          json: () => Promise.resolve(JSON.parse(data))
+        });
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    if (options.body) req.write(options.body);
+    req.end();
+  });
+};
+
+// ৩.৫ সেকেন্ডের টাইমআউট রেকার
 const fetchWithTimeout = (url, options, timeout = 3500) => {
   return Promise.race([
-    fetch(url, options),
+    nativeFetch(url, options),
     new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout))
   ]);
 };
@@ -21,7 +50,6 @@ exports.handler = async (event, context) => {
     const { image, prompt } = JSON.parse(event.body);
     const userPrompt = prompt || "Solve this academic doubt step by step.";
 
-    // OpenAI বাদ দিয়ে বাকি ৪টি এআই চেইন (১০০% কাজ করবে)
     const apis = [
       { name: "Gemini", key: process.env.GEMINI_API_KEY, url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" },
       { name: "Mistral", key: process.env.MISTRAL_API_KEY, url: "https://api.mistral.ai/v1/chat/completions" },
@@ -32,17 +60,14 @@ exports.handler = async (event, context) => {
     for (const api of apis) {
       if (!api.key) continue;
       try {
-        console.log(`Executing ${api.name} fallback router...`);
         let res, data, solution;
         
-        // ১. Gemini প্রসেস লজিক
         if (api.name === "Gemini") {
           const parts = image ? [{ inlineData: { mimeType: "image/jpeg", data: image } }, { text: userPrompt }] : [{ text: userPrompt }];
           res = await fetchWithTimeout(api.url + api.key, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) });
           data = await res.json();
           solution = data.candidates?.[0]?.content?.parts?.[0]?.text;
         } 
-        // ২. Mistral প্রসেস লজিক
         else if (api.name === "Mistral") {
           const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: `data:image/jpeg;base64,${image}` }] : [{ type: "text", text: userPrompt }];
           res = await fetchWithTimeout(api.url, {
@@ -53,7 +78,6 @@ exports.handler = async (event, context) => {
           data = await res.json();
           solution = data.choices?.[0]?.message?.content;
         } 
-        // ৩. OpenRouter প্রসেস লজিক
         else if (api.name === "OpenRouter") {
           const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : [{ type: "text", text: userPrompt }];
           res = await fetchWithTimeout(api.url, {
@@ -64,7 +88,6 @@ exports.handler = async (event, context) => {
           data = await res.json();
           solution = data.choices?.[0]?.message?.content;
         }
-        // ৪. Cohere প্রসেস লজিক
         else if (api.name === "Cohere") {
           res = await fetchWithTimeout(api.url, {
             method: "POST",
@@ -79,11 +102,10 @@ exports.handler = async (event, context) => {
           return { statusCode: 200, headers, body: JSON.stringify({ solution: `[${api.name} Active]\n\n${solution}` }) };
         }
       } catch (e) { 
-        console.error(`${api.name} error or timeout:`, e.message);
-        // টাইমআউট বা ইনভ্যালিড কি হলে লুপ থামবে না, পরের এআই ট্রাই করবে।
+        console.error(`${api.name} error:`, e.message); 
       }
     }
     
-    return { statusCode: 500, headers, body: JSON.stringify({ error: "সবগুলো ফ্রি এআই বর্তমানে ব্যস্ত বা টাইমআউট হয়েছে। অনুগ্রহ করে আরেকবার চেষ্টা করুন।" }) };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: "সবগুলো ফ্রি এআই বর্তমানে ব্যস্ত বা টাইমআউট হয়েছে।" }) };
   } catch (error) { return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) }; }
 };
