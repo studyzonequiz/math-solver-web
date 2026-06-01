@@ -85,7 +85,7 @@
             justify-content: center;
             align-items: center;
             gap: 15px;
-            flex-wrap: nowrap; /* বাটনগুলোকে এক লাইনে রাখবে */
+            flex-wrap: nowrap;
             margin-bottom: 25px;
         }
 
@@ -253,7 +253,6 @@
             font-weight: 700; 
         }
 
-        /* মোবাইল স্ক্রিনের জন্য বাটনগুলো রেসপন্সিভ করা */
         @media (max-width: 576px) {
             .button-group {
                 flex-wrap: wrap;
@@ -309,12 +308,33 @@
     function previewImage(event) {
         const file = event.target.files[0];
         if (!file) return;
+        
+        // ইমেজ সাইজ রিসাইজ করার লজিক (যাতে Netlify-এ দ্রুত ডেটা আপলোড হয়)
         const reader = new FileReader();
         reader.onload = function(e) {
-            document.getElementById('imagePreview').src = e.target.result;
-            document.getElementById('imagePreview').style.display = 'block';
-            document.getElementById('removeImgBtn').style.display = 'flex';
-            base64Image = e.target.result.split(',')[1];
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                // সর্বোচ্চ ১২০০ পিক্সেল উইডথ এ ডাউনস্কেল করবে
+                if (width > 1200) {
+                    height *= 1200 / width;
+                    width = 1200;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                document.getElementById('imagePreview').src = compressedBase64;
+                document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('removeImgBtn').style.display = 'flex';
+                base64Image = compressedBase64.split(',')[1];
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
@@ -334,16 +354,22 @@
         const sendBtn = document.getElementById('sendBtn');
 
         outputBox.style.display = 'block';
-        solutionText.innerHTML = `<div class="spinner-border text-primary spinner-border-sm"></div> প্রসেস হচ্ছে, দয়া করে অপেক্ষা করুন...`;
+        solutionText.innerHTML = `<div class="spinner-border text-primary spinner-border-sm"></div> এআই সমাধান তৈরি করছে, ১০-১৫ সেকেন্ড সময় লাগতে পারে...`;
         sendBtn.disabled = true;
+
+        // AbortController দিয়ে আমরা ফ্রন্টএন্ড টাইমআউট একটু বাড়াবো
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000); // ২৫ সেকেন্ড উইন্ডো
 
         try {
             const response = await fetch('/.netlify/functions/solve-math', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: base64Image, prompt: promptText })
+                body: JSON.stringify({ image: base64Image, prompt: promptText }),
+                signal: controller.signal
             });
 
+            clearTimeout(timeoutId);
             const data = await response.json();
             sendBtn.disabled = false;
 
@@ -357,11 +383,16 @@
                     });
                 }
             } else {
-                solutionText.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> সমস্যা হয়েছে: ${data.error || 'আবার চেষ্টা করুন।'}</span>`;
+                solutionText.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> সার্ভার রেসপন্স করেনি। (Netlify ১০ সেকেন্ডের ফ্রি লিমিট পার হয়েছে)। অনুগ্রহ করে আবার 'Send' চাপুন।</span>`;
             }
         } catch (error) {
             sendBtn.disabled = false;
-            solutionText.innerHTML = `<span class="text-danger"><i class="fa-solid fa-circle-exclamation"></i> নেটওয়ার্ক ধীরগতির কারণে রিকুয়েস্ট ড্রপ হয়েছে। আবার Send বাটনে চাপুন।</span>`;
+            clearTimeout(timeoutId);
+            if (error.name === 'AbortError') {
+                solutionText.innerHTML = `<span class="text-danger"><i class="fa-solid fa-circle-exclamation"></i> সার্ভার থেকে উত্তর আসতে বেশি সময় লাগছে। আবার চেষ্টা করুন।</span>`;
+            } else {
+                solutionText.innerHTML = `<span class="text-danger"><i class="fa-solid = fa-circle-exclamation"></i> Netlify সার্ভার রেসপন্স টাইমআউট (১০ সেকেন্ড শেষ)। আবার 'Send' বাটনে চাপুন, এবার চলে আসবে।</span>`;
+            }
         }
     }
 </script>
