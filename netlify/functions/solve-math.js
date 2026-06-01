@@ -1,14 +1,14 @@
-const { GoogleGenAI } = require("@google/generative-ai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 exports.handler = async (event, context) => {
-  // CORS পলিসি হ্যান্ডেল করার জন্য headers সেটআপ
+  // CORS পলিসি হ্যান্ডেল করার জন্য headers
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
   };
 
-  // ব্রাউজার থেকে আসা প্রি-ফ্লাইট OPTIONS রিকোয়েস্ট হ্যান্ডেল করা
+  // OPTIONS রিকোয়েস্ট হ্যান্ডেল করা
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers, body: "" };
   }
@@ -22,25 +22,25 @@ exports.handler = async (event, context) => {
     const base64Image = body.image;
     const userPrompt = body.prompt || "Solve this doubt step by step.";
 
-    // Netlify এনভায়রনমেন্ট ভেরিয়েবল থেকে API Key নেওয়া হচ্ছে
+    // API Key চেক করা
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: "Server Configuration Error: API Key missing." }),
+        body: JSON.stringify({ error: "API Key missing in server environment." }),
       };
     }
 
-    // জেমিনি এআই ইনিশিয়ালাইজেশন
-    const ai = new GoogleGenAI({ apiKey: apiKey });
+    // সঠিক এবং আপডেটেড জেমিনি ইনিশিয়ালাইজেশন
+    const genAI = new GoogleGenerativeAI(apiKey);
     
-    // ছবি এবং টেক্সট দুটোই একসাথে প্রসেস করার জন্য সবচেয়ে উপযোগী এবং ফাস্ট মডেল
-    const model = ai.models.get("gemini-2.5-flash");
+    // ছবি এবং টেক্সট একসাথে হ্যান্ডেল করার জন্য শক্তিশালী মডেল
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const contents = [];
 
-    // ফ্রন্টএন্ড থেকে ছবি পাঠানো হলে তা জেমিনির ফরম্যাট অনুযায়ী যুক্ত করা হবে
+    // ফ্রন্টএন্ড থেকে ছবি পাঠানো হলে তা জেমিনির ফরম্যাটে যুক্ত করা
     if (base64Image) {
       contents.push({
         inlineData: {
@@ -50,12 +50,13 @@ exports.handler = async (event, context) => {
       });
     }
 
-    // ফ্রন্টএন্ডের সেই সেন্ট্রাল সিস্টেম প্রম্পট ও ইউজারের ইনপুট টেক্সট পুশ করা হচ্ছে
+    // চ্যাটবক্সের টেক্সট ও এআই প্রম্পট যুক্ত করা
     contents.push(userPrompt);
 
-    // জেমিনি রেসপন্স জেনারেট করা
-    const response = await model.generateContent({ contents });
-    const solutionText = response.text;
+    // জেমিনি থেকে উত্তর জেনারেট করা
+    const result = await model.generateContent(contents);
+    const response = await result.response;
+    const solutionText = response.text();
 
     return {
       statusCode: 200,
