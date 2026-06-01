@@ -17,12 +17,17 @@
     
     <style>
         body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .solver-card { max-width: 700px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .preview-box { width: 100%; max-height: 300px; object-fit: contain; margin-top: 15px; border-radius: 10px; display: none; border: 1px solid #ddd; position: relative; }
+        .solver-card { max-width: 700px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; }
+        .preview-box { width: 100%; max-height: 300px; object-fit: contain; margin-top: 15px; border-radius: 10px; display: none; border: 1px solid #ddd; }
         .image-container { position: relative; display: inline-block; width: 100%; }
-        .remove-btn { position: absolute; top: 20px; right: 10px; background: rgba(220, 53, 69, 0.9); color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; display: none; }
+        .remove-btn { position: absolute; top: 20px; right: 10px; background: rgba(220, 53, 69, 0.9); color: white; border: none; border-radius: 5px; padding: 5px 10px; cursor: pointer; display: none; z-index: 10; }
         .output-box { margin-top: 25px; padding: 20px; background: #f8f9fa; border-left: 5px solid #0d6efd; border-radius: 5px; display: none; }
-        .btn-action { min-width: 130px; }
+        .btn-action { min-width: 130px; font-weight: 500; }
+        .style-send { background-color: #4f46e5; color: white; }
+        .style-send:hover { background-color: #4338ca; color: white; }
+        /* STUDY ZONE ব্র্যান্ডিং ফুটারে সুন্দর করার জন্য */
+        .footer-credit { margin-top: 30px; border-top: 1px dashed #ced4da; padding-top: 15px; font-size: 14px; font-weight: 500; color: #6c757d; }
+        .footer-credit span { color: #20c997; font-weight: 600; }
     </style>
 </head>
 <body>
@@ -32,7 +37,7 @@
         <h2>🚀 Doubt Solver AI</h2>
         <p class="text-muted">ছবি তুলুন, গ্যালারি থেকে আপলোড করুন অথবা সর্বোচ্চ ১০০ পাতার পিডিএফ সিলেক্ট করুন।</p>
         
-        <div class="d-flex justify-content-center flex-wrap gap-2 my-3">
+        <div class="d-flex justify-content-center flex-wrap gap-2 my-4">
             <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
             <button class="btn btn-primary btn-action" onclick="document.getElementById('fileInput').click()"><i class="fa-solid fa-camera"></i> ক্যামেরা</button>
             <button class="btn btn-success btn-action" onclick="document.getElementById('fileInput').click()"><i class="fa-solid fa-image"></i> গ্যালারি</button>
@@ -44,15 +49,19 @@
             <button id="removeImgBtn" class="remove-btn" onclick="removeImage()"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
-        <div class="input-group my-3">
+        <div class="input-group my-4 shadow-sm">
             <input type="text" id="promptInput" class="form-control" placeholder="দাগ নম্বর লিখুন বা পিডিএফ থেকে কী জানতে চান তা এখানে লিখুন...">
-            <button class="btn btn-indigo style-send" style="background-color: #4f46e5; color: white;" id="sendBtn" onclick="solveDoubt()"><i class="fa-solid fa-paper-plane"></i> Send</button>
+            <button class="btn style-send px-4" id="sendBtn" onclick="solveDoubt()"><i class="fa-solid fa-paper-plane"></i> Send</button>
         </div>
 
         <div class="output-box text-start" id="outputBox">
             <h5 class="fw-bold text-dark"><i class="fa-solid fa-wand-magic-sparkles text-warning"></i> এআই সমাধান:</h5>
             <hr>
             <div id="solutionText" style="line-height: 1.8; font-size: 15px;"></div>
+        </div>
+
+        <div class="footer-credit">
+            <i class="fa-solid fa-circle-check"></i> Designed & Created by <span>STUDY ZONE</span>
         </div>
     </div>
 </div>
@@ -102,11 +111,9 @@
             sendBtn.disabled = false;
 
             if (data.solution) {
-                // মার্কডাউন টেক্সটকে ব্রাউজারে পড়ার উপযোগী লাইনে রূপান্তর
                 let formattedText = data.solution.replace(/\n/g, '<br>');
                 solutionText.innerHTML = formattedText;
                 
-                // MathJax সচল করা যাতে ইকুয়েশনগুলো বইয়ের মতো সুন্দর হয়ে যায়
                 if (window.MathJax) {
                     MathJax.typesetPromise([solutionText]);
                 }
@@ -115,8 +122,7 @@
             }
         } catch (error) {
             sendBtn.disabled = false;
-            // যদি ১০ সেকেন্ড পার হয়ে নেটলিফাই টাইমআউট করে, তবে ইউজারকে ডিরেক্ট আবার ট্রাই করার জন্য পুশ করবে
-            solutionText.innerHTML = `<span class="text-danger">❌ সার্ভার ব্যস্ততার কারণে রেসপন্স ড্রপ হয়েছে। অনুগ্রহ করে আরেকবার <strong>Send</strong> বাটনে চাপুন (পরের চাবিটি একটিভেট হবে)।</span>`;
+            solutionText.innerHTML = `<span class="text-danger">❌ সার্ভার ব্যস্ততার কারণে রেসপন্স ড্রপ হয়েছে। অনুগ্রহ করে আরেকবার <strong>Send</strong> বাটনে চাপুন।</span>`;
         }
     }
 </script>
