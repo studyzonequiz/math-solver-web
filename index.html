@@ -3,52 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI অংক সমাধানকারী</title>
+    <title>Doubt Solver AI</title>
+    <!-- Tailwind CSS for modern design -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for clean icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 95vh; position: relative; }
-        .container { max-width: 500px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; margin-bottom: 60px; }
-        h1 { color: #333; margin-bottom: 20px; }
-        .upload-btn-wrapper { position: relative; overflow: hidden; display: inline-block; margin-bottom: 20px; }
-        .btn { border: 2px solid #2ecc71; color: white; background-color: #2ecc71; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn:hover { background-color: #27ae60; border-color: #27ae60; }
-        .upload-btn-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; }
-        #preview { max-width: 100%; max-height: 300px; margin-top: 15px; border-radius: 8px; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        #result-box { margin-top: 25px; text-align: left; background: #f9f9f9; padding: 15px; border-radius: 8px; border-left: 5px solid #3498db; display: none; }
-        .loading { display: none; color: #3498db; font-weight: bold; margin-top: 15px; }
-        
-        /* ফুটার এবং আলাদা লোগোর ডিজাইন */
-        .footer { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: auto; padding: 20px; font-size: 15px; color: #555; font-weight: 500; }
-        .footer img { width: 30px; height: 30px; border-radius: 4px; object-fit: cover; box-shadow: 0 1px 4px rgba(0,0,0,0.15); }
-        .brand-name { color: #2c3e50; font-weight: bold; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 min-h-screen flex flex-col justify-between items-center p-4">
 
-<div class="container">
-    <h1>📸 অংক সমাধানকারী AI</h1>
-    <p>আপনার গ্যালারি থেকে অংকের ছবি আপলোড করুন বা তাৎক্ষণিক ছবি তুলুন।</p>
-    
-    <div class="upload-btn-wrapper">
-        <button class="btn">📷 ছবি সিলেক্ট করুন</button>
-        <input type="file" id="imageInput" accept="image/*" capture="environment" onchange="previewAndSolve(event)">
+    <!-- Main Container -->
+    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-gray-100 p-6 my-auto">
+        
+        <!-- Header Section -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800 flex justify-center items-center gap-2">
+                🚀 Doubt Solver AI
+            </h1>
+            <p class="text-gray-600 mt-2 text-sm sm:text-base">
+                আপনার গ্যালারি থেকে প্রশ্নের ছবি আপলোড করুন বা তাৎক্ষণিক ছবি তুলুন।
+            </p>
+        </div>
+
+        <!-- Preview Area (ছবি সিলেক্ট করলে এখানে দেখাবে) -->
+        <div id="previewContainer" class="hidden mb-4 relative rounded-xl overflow-hidden border border-gray-200 bg-gray-100 max-h-64 flex justify-center items-center">
+            <img id="imagePreview" src="" alt="Preview" class="max-h-64 object-contain">
+            <button id="removeImageBtn" class="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 shadow-md">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Hidden File Inputs -->
+        <input type="file" id="galleryInput" accept="image/*" class="hidden">
+        <!-- 'capture' attribute forces camera on mobile devices -->
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+
+        <!-- Control Bar (4 Actions: Camera, Gallery, Chatbox, Send) -->
+        <div class="flex flex-col sm:flex-row gap-2 bg-gray-100 p-2 rounded-xl items-center shadow-inner">
+            
+            <!-- Camera & Gallery Buttons -->
+            <div class="flex gap-2 w-full sm:w-auto justify-center">
+                <button id="cameraBtn" title="তাৎক্ষণিক ছবি তুলুন" class="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition duration-200">
+                    <i class="fa-solid fa-camera text-lg"></i> <span class="sm:hidden">ক্যামেরা</span>
+                </button>
+                <button id="galleryBtn" title="গ্যালারি থেকে সিলেক্ট করুন" class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition duration-200">
+                    <i class="fa-solid fa-image text-lg"></i> <span class="sm:hidden">গ্যালারি</span>
+                </button>
+            </div>
+
+            <!-- Chat Box Input -->
+            <div class="w-full flex-1">
+                <input type="text" id="chatInput" placeholder="দাগ নম্বর বা নির্দিষ্ট কোনো বিষয়ে কিছু লেখার থাকলে এখানে লিখুন..." class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700">
+            </div>
+
+            <!-- Send Button -->
+            <button id="sendBtn" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition duration-200 shadow-md">
+                <i class="fa-solid fa-paper-plane"></i> <span>Send</span>
+            </button>
+        </div>
+
+        <!-- Status / Loading Indicator -->
+        <div id="statusMessage" class="hidden mt-4 text-center p-3 rounded-lg text-sm font-medium"></div>
+
+        <!-- AI Solution Output Area -->
+        <div id="outputContainer" class="hidden mt-6 border-t border-gray-200 pt-4">
+            <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+                ✨ এআই সমাধান:
+            </h3>
+            <div id="aiOutput" class="bg-gray-50 border border-gray-200 p-4 rounded-xl text-gray-700 text-sm sm:text-base leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                <!-- Response will appear here -->
+            </div>
+        </div>
+
     </div>
 
-    <br>
-    <img id="preview" alt="ইউজারের আপলোড করা ছবি">
-    
-    <div id="loading" class="loading">⏳ AI অংকটি সমাধান করছে, অনুগ্রহ করে অপেক্ষা করুন...</div>
-    
-    <div id="result-box">
-        <h3>📊 সমাধান:</h3>
-        <p id="solutionText" style="white-space: pre-line; line-height: 1.6; color: #2c3e50;"></p>
+    <!-- Footer -->
+    <div class="mt-8 mb-4 text-center text-xs text-gray-400 flex flex-col items-center gap-1">
+        <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-100">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-gray-500 font-medium">Designed & Created by STUDY ZONE</span>
+        </div>
     </div>
-</div>
 
-<div class="footer">
-    <img src="logo.png" alt="STUDY ZONE Logo">
-    <span>Designed & Created by <span class="brand-name">STUDY ZONE</span></span>
-</div>
+    <!-- JavaScript logic to handle inputs and Netlify Functions/Gemini API -->
+    <script>
+        const cameraBtn = document.getElementById('cameraBtn');
+        const cameraInput = document.getElementById('cameraInput');
+        const galleryBtn = document.getElementById('galleryBtn');
+        const galleryInput = document.getElementById('galleryInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const outputContainer = document.getElementById('outputContainer');
+        const aiOutput = document.getElementById('aiOutput');
 
-<script src="script.js"></script>
+        let selectedImageBase64 = null;
+
+        // Trigger Hidden Inputs
+        cameraBtn.addEventListener('click', () => cameraInput.click());
+        galleryBtn.addEventListener('click', () => galleryInput.click());
+
+        // Handle Image Selection
+        function handleFile(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                selectedImageBase64 = e.target.result.split(',')[1]; // Get raw base64
+                imagePreview.src = e.target.result;
+                previewContainer.classList.remove('hidden');
+                showStatus('ছবি সফলভাবে যুক্ত হয়েছে! এবার চাইলে চ্যাটবক্সে কিছু লিখে Send চাপুন।', 'bg-blue-50', 'text-blue-700');
+            }
+            reader.readAsDataURL(file);
+        }
+
+        cameraInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        galleryInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+        // Remove Selected Image
+        removeImageBtn.addEventListener('click', () => {
+            selectedImageBase64 = null;
+            imagePreview.src = "";
+            previewContainer.classList.add('hidden');
+            cameraInput.value = "";
+            galleryInput.value = "";
+            showStatus('ছবি সরিয়ে দেওয়া হয়েছে।', 'bg-gray-100', 'text-gray-600');
+            setTimeout(() => statusMessage.classList.add('hidden'), 2000);
+        });
+
+        // Helper to Show Status Messages
+        function showStatus(text, bgColor, textColor) {
+            statusMessage.className = `mt-4 text-center p-3 rounded-lg text-sm font-medium ${bgColor} ${textColor}`;
+            statusMessage.innerText = text;
+            statusMessage.classList.remove('hidden');
+        }
+
+        // Send Button Action
+        sendBtn.addEventListener('click', async () => {
+            const userText = chatInput.value.trim();
+
+            if (!selectedImageBase64 && !userText) {
+                showStatus('দয়া করে কোনো ছবি তুলুন, গ্যালারি থেকে আপলোড করুন অথবা চ্যাটবক্সে কিছু লিখুন।', 'bg-amber-50', 'text-amber-700');
+                return;
+            }
+
+            showStatus('⌛ এআই আপনার প্রশ্নটি বিশ্লেষণ করছে, দয়া করে একটু অপেক্ষা করুন...', 'bg-indigo-50', 'text-indigo-700');
+            outputContainer.classList.add('hidden');
+            sendBtn.disabled = true;
+
+            // System prompt injection for smart subject/chapter detection and bilingual handling
+            const centralPrompt = `
+                You are an advanced, expert academic Doubt Solver AI.
+                Your core capabilities:
+                1. Automatically detect the subject (e.g., Mathematics, Physics, Chemistry, Biology, English, History, Geography, etc.) and the specific chapter/topic from the given question.
+                2. If the user provides a text note/instruction along with the image (e.g., specific question number, serial number, or context), focus heavily on solving that specific query.
+                3. Bilingual Rules:
+                   - If the question is an English Subject question (Grammar, Prose, Poetry, Comprehension), answer/explain strictly in English. However, provide a brief, clear summary or difficult word meanings in simple Bengali at the end if it helps understanding.
+                   - For all other subjects (Math, Science, History, etc.), provide step-by-step clear solutions in clear Bengali language.
+                4. Tone must be encouraging, educational, and accurate.
+            `;
+
+            const fullUserPrompt = userText 
+                ? `${centralPrompt}\n\nUser Instruction/Question Note: ${userText}` 
+                : centralPrompt;
+
+            try {
+                // Sending request to your Netlify serverless function endpoint
+                const response = await fetch('/.netlify/functions/solve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: selectedImageBase64 || null,
+                        prompt: fullUserPrompt
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.solution) {
+                    statusMessage.classList.add('hidden');
+                    aiOutput.innerText = data.solution;
+                    outputContainer.classList.remove('hidden');
+                } else {
+                    showStatus(`❌ সমস্যা হয়েছে: ${data.error || 'উত্তর পাওয়া যায়নি'}`, 'bg-red-50', 'text-red-700');
+                }
+            } catch (error) {
+                showStatus('❌ নেটওয়ার্ক ত্রুটি! দয়া করে আপনার ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।', 'bg-red-50', 'text-red-700');
+                console.error(error);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
