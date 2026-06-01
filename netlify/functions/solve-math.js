@@ -15,7 +15,7 @@ exports.handler = async (event, context) => {
     const userPrompt = body.prompt || "Solve this academic doubt step by step.";
 
     // ==========================================
-    // ১ নম্বর অপশন: Google Gemini 2.5 Flash (Primary AI)
+    // ১ নম্বর অপশন: Google Gemini 2.5 Flash (সম্পূর্ণ ফ্রি)
     // ==========================================
     try {
       const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -42,34 +42,35 @@ exports.handler = async (event, context) => {
           }
         }
       }
-      console.log("Gemini failed or quota exceeded. Switching to Backup 1 (OpenAI)...");
+      console.log("Gemini failed or quota hit. Switching to Backup 1 (Groq Cloud)...");
     } catch (e) {
       console.error("Gemini Error:", e.message);
     }
 
     // ==========================================
-    // ২ নম্বর অপশন: OpenAI GPT-4o-mini (Backup AI 1)
-    // বিশেষ করে কম্পিউটার সায়েন্স এবং কোডিংয়ের জন্য দুর্দান্ত
+    // ২ নম্বর অপশন (FREE BACKUP 1): Groq Cloud (Llama 3)
+    // এটি ফিজিক্স, কেমিস্ট্রি ও কম্পিউটার সায়েন্সের জটিল থিওরি ও কোডিংয়ের জন্য ওস্তাদ এবং সম্পূর্ণ ফ্রি!
     // ==========================================
     try {
-      const openaiApiKey = process.env.OPENAI_API_KEY;
-      if (openaiApiKey) {
-        console.log("Trying OpenAI GPT-4o-mini...");
-        const openaiUrl = "https://api.openai.com/v1/chat/completions";
-        const contentParts = [{ type: "text", text: userPrompt }];
+      const groqApiKey = process.env.GROQ_API_KEY; // একদম ফ্রি কী
+      if (groqApiKey) {
+        console.log("Trying Groq Llama-3...");
+        const groqUrl = "https://api.groq.com/openai/v1/chat/completions";
         
+        const contentParts = [{ type: "text", text: userPrompt }];
         if (base64Image) {
+          // দ্রষ্টব্য: Groq-এর কিছু ফ্রি মডেল ডিরেক্ট ইমেজ সাপোর্ট না করলে টেক্সট প্রম্পট প্রসেস করবে
           contentParts.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } });
         }
 
-        const res = await fetch(openaiUrl, {
+        const res = await fetch(groqUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${openaiApiKey}`
+            "Authorization": `Bearer ${groqApiKey}`
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: "llama-3.2-11b-vision-preview", // ইমেজ ও টেক্সট হ্যান্ডেল করার ফ্রি ভিশন মডেল
             messages: [{ role: "user", content: contentParts }],
             max_tokens: 1500
           })
@@ -79,65 +80,59 @@ exports.handler = async (event, context) => {
           const data = await res.json();
           const solution = data.choices?.[0]?.message?.content;
           if (solution) {
-            return { statusCode: 200, headers, body: JSON.stringify({ solution: "[OpenAI Active]\n\n" + solution }) };
+            return { statusCode: 200, headers, body: JSON.stringify({ solution: "[Groq Llama-3 Active]\n\n" + solution }) };
           }
         }
       }
-      console.log("OpenAI failed. Switching to Backup 2 (Anthropic Claude)...");
+      console.log("Groq failed. Switching to Backup 2 (Together AI)...");
     } catch (e) {
-      console.error("OpenAI Error:", e.message);
+      console.error("Groq Error:", e.message);
     }
 
     // ==========================================
-    // ৩ নম্বর অপশন: Anthropic Claude 3.5 Sonnet (Backup AI 2)
-    // ফিজিক্স এবং জটিল কেমিস্ট্রি সমীকরণের জন্য বিশ্বের সেরা এআই
+    // ৩ নম্বর অপশন (FREE BACKUP 2): Together AI (Mixtral)
+    // এটি ম্যাথ এবং সায়েন্সের জন্য অত্যন্ত শক্তিশালী এবং ডেভলপারদের ফ্রি ক্রেডিট দেয়
     // ==========================================
     try {
-      const claudeApiKey = process.env.CLAUDE_API_KEY;
-      if (claudeApiKey) {
-        console.log("Trying Anthropic Claude...");
-        const claudeUrl = "https://api.anthropic.com/v1/messages";
+      const togetherApiKey = process.env.TOGETHER_API_KEY; // একদম ফ্রি কী
+      if (togetherApiKey) {
+        console.log("Trying Together AI...");
+        const togetherUrl = "https://api.together.xyz/v1/chat/completions";
         
-        const contentParts = [];
+        const contentParts = [{ type: "text", text: userPrompt }];
         if (base64Image) {
-          contentParts.push({
-            type: "image",
-            source: { type: "base64", media_type: "image/jpeg", data: base64Image }
-          });
+          contentParts.push({ type: "image_url", image_url: { url: `data:image/jpeg;base64,${base64Image}` } });
         }
-        contentParts.push({ type: "text", text: userPrompt });
 
-        const res = await fetch(claudeUrl, {
+        const res = await fetch(togetherUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-api-key": claudeApiKey,
-            "anthropic-version": "2023-06-01"
+            "Authorization": `Bearer ${togetherApiKey}`
           },
           body: JSON.stringify({
-            model: "claude-3-5-sonnet-20241022",
-            max_tokens: 1500,
-            messages: [{ role: "user", content: contentParts }]
+            model: "meta/Llama-3-2-11B-Vision-Instruct",
+            messages: [{ role: "user", content: contentParts }],
+            max_tokens: 1500
           })
         });
 
         if (res.ok) {
           const data = await res.json();
-          const solution = data.content?.[0]?.text;
+          const solution = data.choices?.[0]?.message?.content;
           if (solution) {
-            return { statusCode: 200, headers, body: JSON.stringify({ solution: "[Claude Active]\n\n" + solution }) };
+            return { statusCode: 200, headers, body: JSON.stringify({ solution: "[Together AI Active]\n\n" + solution }) };
           }
         }
       }
     } catch (e) {
-      console.error("Claude Error:", e.message);
+      console.error("Together AI Error:", e.message);
     }
 
-    // যদি কোনো এআই কাজ না করে বা সবার লিমিট শেষ হয়ে যায়
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: "সবগুলো এআই সিস্টেম বর্তমানে লিমিট পার করেছে বা ব্যস্ত আছে। ২ মিনিট পর আবার চেষ্টা করুন।" })
+      body: JSON.stringify({ error: "সবগুলো ফ্রি এআই সিস্টেম বর্তমানে ব্যস্ত। ১ মিনিট পর আবার চেষ্টা করুন।" })
     };
 
   } catch (error) {
