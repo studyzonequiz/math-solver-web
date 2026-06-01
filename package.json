@@ -1,9 +1,9 @@
 {
-  "name": "math-solver-web",
+  "name": "doubt-solver-ai",
   "version": "1.0.0",
-  "description": "AI Math Solver",
+  "description": "Doubt Solver AI backend using Gemini",
   "main": "index.html",
   "dependencies": {
-    "node-fetch": "^2.7.0"
+    "@google/generative-ai": "^0.1.1"
   }
 }
