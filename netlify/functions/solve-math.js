@@ -1,6 +1,6 @@
 const https = require('https');
 
-// বিল্ট-ইন https মডিউল দিয়ে ফেচ করার ফাংশন (কোনো এক্সটার্নাল প্যাকেজ লাগবে না)
+// বিল্ট-ইন https মডিউল দিয়ে ফেচ করার ফাংশন
 const nativeFetch = (url, options) => {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
@@ -50,25 +50,40 @@ exports.handler = async (event, context) => {
     const { image, prompt } = JSON.parse(event.body);
     const userPrompt = prompt || "Solve this academic doubt step by step.";
 
-    const apis = [
-      { name: "Gemini", key: process.env.GEMINI_API_KEY, url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" },
-      { name: "Mistral", key: process.env.MISTRAL_API_KEY, url: "https://api.mistral.ai/v1/chat/completions" },
-      { name: "OpenRouter", key: process.env.OPENROUTER_API_KEY, url: "https://api.openrouter.ai/v1/chat/completions" },
-      { name: "Cohere", key: process.env.COHERE_API_KEY, url: "https://api.cohere.com/v1/chat" }
-    ];
+    // এখানে আপনার ১২টি Gemini Key ডাইনামিকালি লোড হবে
+    const apis = [];
+    
+    for (let i = 1; i <= 12; i++) {
+      const key = process.env[`GEMINI_API_KEY_${i}`];
+      if (key) {
+        apis.push({
+          name: `Gemini-${i}`,
+          type: "Gemini",
+          key: key,
+          url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
+        });
+      }
+    }
+
+    // আগের বাকি API গুলো নিচে যুক্ত করে দেওয়া হলো
+    apis.push(
+      { name: "Mistral", type: "Mistral", key: process.env.MISTRAL_API_KEY, url: "https://api.mistral.ai/v1/chat/completions" },
+      { name: "OpenRouter", type: "OpenRouter", key: process.env.OPENROUTER_API_KEY, url: "https://api.openrouter.ai/v1/chat/completions" },
+      { name: "Cohere", type: "Cohere", key: process.env.COHERE_API_KEY, url: "https://api.cohere.com/v1/chat" }
+    );
 
     for (const api of apis) {
       if (!api.key) continue;
       try {
         let res, data, solution;
         
-        if (api.name === "Gemini") {
+        if (api.type === "Gemini") {
           const parts = image ? [{ inlineData: { mimeType: "image/jpeg", data: image } }, { text: userPrompt }] : [{ text: userPrompt }];
           res = await fetchWithTimeout(api.url + api.key, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) });
           data = await res.json();
           solution = data.candidates?.[0]?.content?.parts?.[0]?.text;
         } 
-        else if (api.name === "Mistral") {
+        else if (api.type === "Mistral") {
           const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: `data:image/jpeg;base64,${image}` }] : [{ type: "text", text: userPrompt }];
           res = await fetchWithTimeout(api.url, {
             method: "POST",
@@ -78,7 +93,7 @@ exports.handler = async (event, context) => {
           data = await res.json();
           solution = data.choices?.[0]?.message?.content;
         } 
-        else if (api.name === "OpenRouter") {
+        else if (api.type === "OpenRouter") {
           const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : [{ type: "text", text: userPrompt }];
           res = await fetchWithTimeout(api.url, {
             method: "POST",
@@ -88,7 +103,7 @@ exports.handler = async (event, context) => {
           data = await res.json();
           solution = data.choices?.[0]?.message?.content;
         }
-        else if (api.name === "Cohere") {
+        else if (api.type === "Cohere") {
           res = await fetchWithTimeout(api.url, {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api.key}` },
