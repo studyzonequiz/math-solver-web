@@ -6,6 +6,7 @@
     <title>Doubt Solver AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     </style>
@@ -19,7 +20,7 @@
                 🚀 Doubt Solver AI
             </h1>
             <p class="text-gray-600 mt-2 text-sm sm:text-base">
-                আপনার গ্যালারি থেকে প্রশ্নের ছবি আপলোড করুন বা তাৎক্ষণিক ছবি তুলুন।
+                ছবি তুলুন, গ্যালারি থেকে আপলোড করুন অথবা সর্বোচ্চ ১০০ পাতার পিডিএফ সিলেক্ট করুন।
             </p>
         </div>
 
@@ -32,25 +33,27 @@
 
         <input type="file" id="galleryInput" accept="image/*" class="hidden">
         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="pdfInput" accept=".pdf" class="hidden">
 
-        <div class="flex flex-col sm:flex-row gap-2 bg-gray-100 p-2 rounded-xl items-center shadow-inner">
-            
-            <div class="flex gap-2 w-full sm:w-auto justify-center">
-                <button id="cameraBtn" title="তাৎক্ষণিক ছবি তুলুন" class="flex-1 sm:flex-initial bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition duration-200">
-                    <i class="fa-solid fa-camera text-lg"></i> <span class="sm:hidden">ক্যামেরা</span>
+        <div class="flex flex-col gap-3 bg-gray-100 p-3 rounded-xl shadow-inner">
+            <div class="flex flex-wrap gap-2 w-full justify-center">
+                <button id="cameraBtn" class="flex-1 min-w-[100px] bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 transition duration-200 text-sm">
+                    <i class="fa-solid fa-camera"></i> <span>ক্যামেরা</span>
                 </button>
-                <button id="galleryBtn" title="গ্যালারি থেকে সিলেক্ট করুন" class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition duration-200">
-                    <i class="fa-solid fa-image text-lg"></i> <span class="sm:hidden">গ্যালারি</span>
+                <button id="galleryBtn" class="flex-1 min-w-[100px] bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 transition duration-200 text-sm">
+                    <i class="fa-solid fa-image"></i> <span>গ্যালারি</span>
+                </button>
+                <button id="pdfBtn" class="flex-1 min-w-[100px] bg-red-600 hover:bg-red-700 text-white px-3 py-2.5 rounded-lg font-medium flex items-center justify-center gap-2 transition duration-200 text-sm">
+                    <i class="fa-solid fa-file-pdf"></i> <span>PDF আপলোড</span>
                 </button>
             </div>
 
-            <div class="w-full flex-1">
-                <input type="text" id="chatInput" placeholder="দাগ নম্বর বা নির্দিষ্ট কোনো বিষয়ে কিছু লেখার থাকলে এখানে লিখুন..." class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700">
+            <div class="w-full flex gap-2 items-center">
+                <input type="text" id="chatInput" placeholder="দাগ নম্বর লিখুন বা পিডিএফ থেকে কী জানতে চান তা এখানে লিখুন..." class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-700">
+                <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition duration-200 shadow-md">
+                    <i class="fa-solid fa-paper-plane"></i> <span>Send</span>
+                </button>
             </div>
-
-            <button id="sendBtn" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition duration-200 shadow-md">
-                <i class="fa-solid fa-paper-plane"></i> <span>Send</span>
-            </button>
         </div>
 
         <div id="statusMessage" class="hidden mt-4 text-center p-3 rounded-lg text-sm font-medium"></div>
@@ -59,10 +62,8 @@
             <h3 class="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
                 ✨ এআই সমাধান:
             </h3>
-            <div id="aiOutput" class="bg-gray-50 border border-gray-200 p-4 rounded-xl text-gray-700 text-sm sm:text-base leading-relaxed overflow-x-auto whitespace-pre-wrap">
-                </div>
+            <div id="aiOutput" class="bg-gray-50 border border-gray-200 p-4 rounded-xl text-gray-700 text-sm sm:text-base leading-relaxed overflow-x-auto whitespace-pre-wrap"></div>
         </div>
-
     </div>
 
     <div class="mt-8 mb-4 text-center text-xs text-gray-400 flex flex-col items-center gap-1">
@@ -73,10 +74,15 @@
     </div>
 
     <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
         const cameraBtn = document.getElementById('cameraBtn');
         const cameraInput = document.getElementById('cameraInput');
         const galleryBtn = document.getElementById('galleryBtn');
         const galleryInput = document.getElementById('galleryInput');
+        const pdfBtn = document.getElementById('pdfBtn');
+        const pdfInput = document.getElementById('pdfInput');
+        
         const previewContainer = document.getElementById('previewContainer');
         const imagePreview = document.getElementById('imagePreview');
         const removeImageBtn = document.getElementById('removeImageBtn');
@@ -87,25 +93,101 @@
         const aiOutput = document.getElementById('aiOutput');
 
         let selectedImageBase64 = null;
+        let extractedPdfText = ""; 
 
         cameraBtn.addEventListener('click', () => cameraInput.click());
         galleryBtn.addEventListener('click', () => galleryInput.click());
+        pdfBtn.addEventListener('click', () => pdfInput.click());
 
-        function handleFile(file) {
+        // ইমেজ হ্যান্ডেল ও সাইজ ছোট করার লজিক (যা নেটওয়ার্কের সমস্যা দূর করবে)
+        function handleImage(file) {
             if (!file) return;
+            extractedPdfText = ""; // ছবি আপলোড করলে পিডিএফ এর টেক্সট রিসেট হবে
             
             const reader = new FileReader();
             reader.onload = function(e) {
-                selectedImageBase64 = e.target.result.split(',')[1];
-                imagePreview.src = e.target.result;
-                previewContainer.classList.remove('hidden');
-                showStatus('ছবি সফলভাবে যুক্ত হয়েছে! এবার চাইলে চ্যাটবক্সে কিছু লিখে Send চাপুন।', 'bg-blue-50', 'text-blue-700');
-            }
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    const MAX_WIDTH = 1000; // স্পিড ফাস্ট রাখতে ছবি আরও অপ্টিমাইজ করা হলো
+                    const MAX_HEIGHT = 1000;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                    selectedImageBase64 = compressedDataUrl.split(',')[1];
+                    
+                    imagePreview.src = compressedDataUrl;
+                    previewContainer.classList.remove('hidden');
+                    showStatus('📸 ছবি সফলভাবে যুক্ত ও অপ্টিমাইজ হয়েছে! আপনার প্রশ্ন লিখে Send চাপুন।', 'bg-blue-50', 'text-blue-700');
+                };
+            };
             reader.readAsDataURL(file);
         }
 
-        cameraInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
-        galleryInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        // পিডিএফ রিডিং লজিক (সর্বোচ্চ ১০০ পাতা ব্রাউজারে রিড হবে)
+        pdfInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // নতুন পিডিএফ যোগ হলে আগের ছবি রিসেট হবে
+            selectedImageBase64 = null;
+            previewContainer.classList.add('hidden');
+
+            if (file.type !== "application/pdf") {
+                showStatus('❌ শুধুমাত্র পিডিএফ (.pdf) ফাইল আপলোড করুন।', 'bg-red-50', 'text-red-700');
+                return;
+            }
+
+            showStatus('⏳ পিডিএফ ফাইল পড়া শুরু হচ্ছে...', 'bg-amber-50', 'text-amber-700');
+
+            const reader = new FileReader();
+            reader.onload = async function() {
+                try {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let totalPages = pdf.numPages;
+
+                    if (totalPages > 100) {
+                        showStatus('❌ দুঃখিত! এই পিডিএফে ' + totalPages + ' টি পাতা আছে। সর্বোচ্চ ১০০ পাতার ফাইল দেওয়া সম্ভব।', 'bg-red-50', 'text-red-700');
+                        pdfInput.value = "";
+                        return;
+                    }
+
+                    let fullText = "";
+                    for (let i = 1; i <= totalPages; i++) {
+                        showStatus(`📄 পিডিএফ স্ক্যান হচ্ছে: ${i}/${totalPages} পাতা...`, 'bg-amber-50', 'text-amber-700');
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(" ");
+                        fullText += `\n[Page ${i}]\n` + pageText;
+                    }
+
+                    extractedPdfText = fullText;
+                    showStatus(`✅ পিডিএফ রেডি (${totalPages} পাতা)। নিচে চ্যাটবক্সে প্রশ্ন লিখে Send চাপুন, এআই উত্তর বের করে দেবে!`, 'bg-emerald-50', 'text-emerald-700');
+                } catch (err) {
+                    showStatus('❌ পিডিএফ ফাইলটি স্ক্যান করতে সমস্যা হয়েছে।', 'bg-red-50', 'text-red-700');
+                    console.error(err);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        cameraInput.addEventListener('change', (e) => handleImage(e.target.files[0]));
+        galleryInput.addEventListener('change', (e) => handleImage(e.target.files[0]));
 
         removeImageBtn.addEventListener('click', () => {
             selectedImageBase64 = null;
@@ -114,7 +196,6 @@
             cameraInput.value = "";
             galleryInput.value = "";
             showStatus('ছবি সরিয়ে দেওয়া হয়েছে।', 'bg-gray-100', 'text-gray-600');
-            setTimeout(() => statusMessage.classList.add('hidden'), 2000);
         });
 
         function showStatus(text, bgColor, textColor) {
@@ -125,9 +206,8 @@
 
         sendBtn.addEventListener('click', async () => {
             const userText = chatInput.value.trim();
-
-            if (!selectedImageBase64 && !userText) {
-                showStatus('দয়া করে কোনো ছবি তুলুন, গ্যালারি থেকে আপলোড করুন অথবা চ্যাটবক্সে কিছু লিখুন।', 'bg-amber-50', 'text-amber-700');
+            if (!selectedImageBase64 && !extractedPdfText && !userText) {
+                showStatus('দয়া করে কোনো ছবি, পিডিএফ অথবা চ্যাটবক্সে কিছু একটা ইনপুট দিন।', 'bg-amber-50', 'text-amber-700');
                 return;
             }
 
@@ -135,47 +215,50 @@
             outputContainer.classList.add('hidden');
             sendBtn.disabled = true;
 
-            // অ্যাডভান্সড মাল্টি-সাবজেক্ট এক্সপার্ট প্রম্পট ইঞ্জেকশন
             const centralPrompt = `
                 You are an elite, world-class Academic Intelligence & Doubt Solver AI.
-                Your domain-specific expertise instructions:
-                1. SUBJECT EXPERT CHEATSHEET:
-                   - Computer Science: Provide optimized code logic, clean syntax, dry-run explanation, time/space complexity (Big O) if applicable.
-                   - Physics: State the formula clearly first, define variables, show complete algebraic derivation, and state units correctly.
-                   - Chemistry: Detail all chemical equations, reaction mechanisms, molecular balances, and oxidation states.
-                2. STEP-BY-STEP breakdown is mandatory. Avoid jumping directly to final results.
-                3. User Context: If the user focuses on a specific question serial or question area via text description, fulfill that task precisely.
-                4. BILINGUAL RESPONSE POLICY:
-                   - For English Subject & Global Coding questions: Answer strictly in structured English.
-                   - For Science, Math, CS concepts, and Humanities: Provide intuitive, step-by-step guidance in clear Bengali language.
+                Your instructions:
+                1. Provide step-by-step clear academic solutions.
+                2. Computer Science: Provide optimized code logic and clean syntax.
+                3. Physics/Math: State formula clearly, show derivation, include units.
+                4. Bilingual Policy: For English text, answer in structured English. For all general explanations and concepts, provide guidance in clear Bengali language.
             `;
 
-            const fullUserPrompt = userText 
-                ? `${centralPrompt}\n\nUser Instruction/Question Note: ${userText}` 
-                : centralPrompt;
+            let finalPrompt = centralPrompt;
+            if (extractedPdfText) {
+                finalPrompt += `\n\n[Context from Uploaded PDF Document]:\n${extractedPdfText}\n\nUser Question based on PDF: ${userText || "Summarize this document and list key questions/answers."}`;
+            } else if (userText) {
+                finalPrompt += `\n\nUser Question: ${userText}`;
+            }
 
             try {
-                // মাল্টি-এআই ব্যাকএন্ড ফাংশন এন্ডপয়েন্ট কল করা হচ্ছে
+                // নেটলিফায়ের ১০ সেকেন্ডের টাইমআউট ক্র্যাশ ঠেকাতে ফ্রন্টএন্ডে ৯.২ সেকেন্ডের অ্যালার্ট রেস ট্র্যাকার
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 9200);
+
                 const response = await fetch('/.netlify/functions/solve-math', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        image: selectedImageBase64 || null,
-                        prompt: fullUserPrompt
-                    })
+                    body: JSON.stringify({ image: selectedImageBase64 || null, prompt: finalPrompt }),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 const data = await response.json();
-
+                
                 if (response.ok && data.solution) {
                     statusMessage.classList.add('hidden');
                     aiOutput.innerText = data.solution;
                     outputContainer.classList.remove('hidden');
                 } else {
-                    showStatus(`❌ সমস্যা হয়েছে: ${data.error || 'উত্তর পাওয়া যায়নি'}`, 'bg-red-50', 'text-red-700');
+                    showStatus(`❌ সমস্যা হয়েছে: ${data.error || 'এআই উত্তর দিতে পারেনি'}`, 'bg-red-50', 'text-red-700');
                 }
             } catch (error) {
-                showStatus('❌ নেটওয়ার্ক ত্রুটি! দয়া করে আপনার ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।', 'bg-red-50', 'text-red-700');
+                if (error.name === 'AbortError') {
+                    showStatus('❌ নেটওয়ার্ক ধীরগতির কারণে রিকোয়েস্ট ড্রপ হয়েছে। আবার Send বাটনে চাপুন।', 'bg-red-50', 'text-red-700');
+                } else {
+                    showStatus('❌ সার্ভার রেসপন্স দিচ্ছে না। দয়া করে আবার চেষ্টা করুন।', 'bg-red-50', 'text-red-700');
+                }
                 console.error(error);
             } finally {
                 sendBtn.disabled = false;
