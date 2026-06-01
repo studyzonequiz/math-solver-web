@@ -1,3 +1,13 @@
+const fetch = require('node-fetch');
+
+// নির্দিষ্ট সময়ের মধ্যে রেসপন্স না এলে রিকোয়েস্ট ক্যানসেল বা অন্য এআই-তে যাওয়ার ট্র্যাকার
+const fetchWithTimeout = (url, options, timeout = 3500) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout))
+  ]);
+};
+
 exports.handler = async (event, context) => {
   const headers = { 
     "Access-Control-Allow-Origin": "*", 
@@ -11,44 +21,81 @@ exports.handler = async (event, context) => {
     const { image, prompt } = JSON.parse(event.body);
     const userPrompt = prompt || "Solve this academic doubt step by step.";
 
-    // ৪টি কনফার্ম কাজ করা এআই সার্ভিস
+    // আপনার কাছে থাকা ৫টি শক্তিশালী এআই চেইন
     const apis = [
       { name: "Gemini", key: process.env.GEMINI_API_KEY, url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" },
+      { name: "OpenAI", key: process.env.OPENAI_API_KEY, url: "https://api.openai.com/v1/chat/completions" },
+      { name: "Mistral", key: process.env.MISTRAL_API_KEY, url: "https://api.mistral.ai/v1/chat/completions" },
       { name: "OpenRouter", key: process.env.OPENROUTER_API_KEY, url: "https://openrouter.ai/api/v1/chat/completions" },
-      { name: "Together", key: process.env.TOGETHER_API_KEY, url: "https://api.together.xyz/v1/chat/completions" },
-      { name: "DeepInfra", key: process.env.DEEPINFRA_API_KEY, url: "https://api.deepinfra.com/v1/openai/chat/completions" }
+      { name: "Cohere", key: process.env.COHERE_API_KEY, url: "https://api.cohere.com/v1/chat" }
     ];
 
     for (const api of apis) {
       if (!api.key) continue;
       try {
+        console.log(`Executing ${api.name} fallback router...`);
         let res, data, solution;
         
+        // ১. Gemini প্রসেস লজিক
         if (api.name === "Gemini") {
           const parts = image ? [{ inlineData: { mimeType: "image/jpeg", data: image } }, { text: userPrompt }] : [{ text: userPrompt }];
-          res = await fetch(api.url + api.key, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) });
+          res = await fetchWithTimeout(api.url + api.key, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts }] }) });
           data = await res.json();
           solution = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        } else {
+        } 
+        // ২. OpenAI (ChatGPT) প্রসেস লজিক
+        else if (api.name === "OpenAI") {
           const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : [{ type: "text", text: userPrompt }];
-          res = await fetch(api.url, { 
-            method: "POST", 
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api.key}` }, 
-            body: JSON.stringify({ 
-              model: api.name === "OpenRouter" ? "meta-llama/llama-3.2-11b-vision-instruct:free" : "meta-llama/Llama-3.2-11B-Vision-Instruct", 
-              messages: [{ role: "user", content }] 
-            }) 
+          res = await fetchWithTimeout(api.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api.key}` },
+            body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "user", content }] })
           });
           data = await res.json();
           solution = data.choices?.[0]?.message?.content;
         }
+        // ৩. Mistral প্রসেস লজিক
+        else if (api.name === "Mistral") {
+          const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: `data:image/jpeg;base64,${image}` }] : [{ type: "text", text: userPrompt }];
+          res = await fetchWithTimeout(api.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api.key}` },
+            body: JSON.stringify({ model: "pixtral-12b-2409", messages: [{ role: "user", content }] })
+          });
+          data = await res.json();
+          solution = data.choices?.[0]?.message?.content;
+        } 
+        // ৪. OpenRouter প্রসেস লজিক
+        else if (api.name === "OpenRouter") {
+          const content = image ? [{ type: "text", text: userPrompt }, { type: "image_url", image_url: { url: `data:image/jpeg;base64,${image}` } }] : [{ type: "text", text: userPrompt }];
+          res = await fetchWithTimeout(api.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api.key}` },
+            body: JSON.stringify({ model: "meta-llama/llama-3.2-11b-vision-instruct:free", messages: [{ role: "user", content }] })
+          });
+          data = await res.json();
+          solution = data.choices?.[0]?.message?.content;
+        }
+        // ৫. Cohere প্রসেস লজিক
+        else if (api.name === "Cohere") {
+          res = await fetchWithTimeout(api.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api.key}` },
+            body: JSON.stringify({ model: "command-r-plus", message: userPrompt })
+          });
+          data = await res.json();
+          solution = data.text;
+        }
 
-        if (res.ok && solution) {
+        if (res && res.ok && solution) {
           return { statusCode: 200, headers, body: JSON.stringify({ solution: `[${api.name} Active]\n\n${solution}` }) };
         }
-      } catch (e) { console.error(`${api.name} error:`, e.message); }
+      } catch (e) { 
+        console.error(`${api.name} error or timeout:`, e.message);
+        // একটি ফেল বা ৩.৫ সেকেন্ডে টাইমআউট হলে লুপ ভাঙবে না, সরাসরি পরের এআই ধরবে।
+      }
     }
     
-    return { statusCode: 500, headers, body: JSON.stringify({ error: "সবগুলো এআই বর্তমানে রেসপন্স দিচ্ছে না। দয়া করে আবার চেষ্টা করুন।" }) };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: "সবগুলো ফ্রি এআই বর্তমানে রেসপন্স দিতে ব্যর্থ হয়েছে। অনুগ্রহ করে আরেকবার চেষ্টা করুন।" }) };
   } catch (error) { return { statusCode: 500, headers, body: JSON.stringify({ error: error.message }) }; }
 };
